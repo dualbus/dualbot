@@ -3,7 +3,7 @@ from twisted.words.protocols.irc import IRCClient
 from twisted.internet import reactor, protocol
 from functools import wraps
 import logging
-from hooks import Ignorer, Intimidator, Friends
+from hooks import Ignorer, Intimidator, Friends, Terminator
 
 def hookable(client_ro, func):
 
@@ -216,16 +216,18 @@ if __name__ == '__main__':
     'irc.realname': 'Eduardo Bustamante',
     'irc.network': 'irc.freenode.net',
     'irc.port': 6667,
-    'irc.channels': ['#dualbus'],
+    'irc.channels': ['#dualbus', '#banning-test'],
     }
 
   logging.basicConfig(level=logging.DEBUG)
 
+  terminator = Terminator('dualbus')
   friends = Friends({'dualbus': 1})
   factory = MyIrcFactory(config)
-  factory.add_hook('privmsg', Ignorer())
-  factory.add_hook('privmsg', friends.privmsgHook())
-  factory.add_hook('userJoined', Intimidator('dualbus', ['#dualbus']))
+  #factory.add_hook('privmsg', Ignorer())
+  #factory.add_hook('privmsg', friends.privmsgHook())
+  factory.add_hook('privmsg', terminator.privmsgHook())
+  #factory.add_hook('userJoined', Intimidator('dualbus', ['#dualbus']))
 
   reactor.connectTCP(config['irc.network'], config['irc.port'], factory)
   reactor.run()
