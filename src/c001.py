@@ -3,7 +3,8 @@ from twisted.words.protocols.irc import IRCClient
 from twisted.internet import reactor, protocol
 from functools import wraps
 import logging
-from hooks import Ignorer, Intimidator, Friends, Terminator
+
+from hooks import Killer
 
 def hookable(client_ro, func):
 
@@ -59,9 +60,10 @@ class MyIrc(IRCClient, object):
     #'ctcpQuery_SOURCE',
     #'ctcpQuery_TIME',
     #'ctcpQuery_USERINFO',
-    #'ctcpQuery_VERSION',
-    #'ctcpReply',
+    #'ctcpQuery',
+    'ctcpReply',
     #'ctcpReply_PING',
+    'ctcpReply',
     #'ctcpUnknownQuery',
     #'ctcpUnknownReply',
     #'dataReceived',
@@ -176,9 +178,15 @@ class MyIrc(IRCClient, object):
   def _set_real(self, real):
     self.factory.config['irc.realname'] = real
 
+  def _pass(self):
+    return self.factory.config['irc.password']
+  def _set_pass(self, pass_):
+    self.factory.config['irc.password'] = pass_
+
   nickname = property(_nick, _set_nick)
   username = property(_user, _set_user)
   realname = property(_real, _set_real)
+  password = property(_pass, _set_pass)
 
 
 
@@ -210,24 +218,16 @@ class MyIrcFactory(protocol.ClientFactory):
 
 
 if __name__ == '__main__':
-  config = {
-    'irc.nick': 'dualbot',
-    'irc.user': 'dualbot',
-    'irc.realname': 'Eduardo Bustamante',
-    'irc.network': 'irc.freenode.net',
-    'irc.port': 6667,
-    'irc.channels': ['#dualbus', '#banning-test'],
-    }
+
+  from settings import config, KILLER
 
   logging.basicConfig(level=logging.DEBUG)
 
-  terminator = Terminator('dualbus')
-  friends = Friends({'dualbus': 1})
   factory = MyIrcFactory(config)
-  #factory.add_hook('privmsg', Ignorer())
-  #factory.add_hook('privmsg', friends.privmsgHook())
-  factory.add_hook('privmsg', terminator.privmsgHook())
-  #factory.add_hook('userJoined', Intimidator('dualbus', ['#dualbus']))
+    
+  killer = Killer([KILLER.dualbus, KILLER.alvarezp])
+  factory.add_hook('userJoined', killer.userJoinedHook())
+  factory.add_hook('ctcpReply', killer.ctcpReplyHook())
 
   reactor.connectTCP(config['irc.network'], config['irc.port'], factory)
   reactor.run()
